@@ -1,62 +1,49 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
-import altair as alt
+from datetime import datetime
 
-# ---------------------------------------------------------
 # 1. 核心設定
-# ---------------------------------------------------------
 st.set_page_config(page_title="Hazel's 黃金體態", page_icon="🍊", layout="wide")
 
-# ★★★ 你的 Google Sheet ID ★★★
-LEMON_SHEET_ID = "1o-_Xr7wlisU7Wo0eLY_m2sWocptJC9poMxrUSkOMCNo"
-DIAMOND_SHEET_ID = "1Iok7RIO1y4ggbcpVja0yoO0J2Cox04Y3WJjufBpOAus"
-
-# ---------------------------------------------------------
-# 2. 資料讀取函式 (搬運工)
-# ---------------------------------------------------------
+# 2. 資料讀取 (讀取 Google Sheet CSV)
 @st.cache_data(ttl=600)
 def load_data():
+    lemon_id = "1o-_Xr7wlisU7Wo0eLY_m2sWocptJC9poMxrUSkOMCNo"
     # 使用你修正後的分頁名稱 allDatas
-    url_lemon = f"https://docs.google.com/spreadsheets/d/{LEMON_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=allDatas"
-    url_diamond = f"https://docs.google.com/spreadsheets/d/{DIAMOND_SHEET_ID}/gviz/tq?tqx=out:csv"
-    
+    url = f"https://docs.google.com/spreadsheets/d/{lemon_id}/gviz/tq?tqx=out:csv&sheet=allDatas"
     try:
-        df_lemon = pd.read_csv(url_lemon)
-        df_workout = pd.read_csv(url_diamond)
-        return df_lemon, df_workout
-    except Exception as e:
-        return None, None
+        df = pd.read_csv(url)
+        return df
+    except:
+        return None
 
-# ---------------------------------------------------------
-# 3. 主程式 (開始蓋房子)
-# ---------------------------------------------------------
-st.title("🍊 Hazel's 黃金體態")
-st.write("正在連線到 Google Sheet 讀取最新數據...")
+# 3. 主程式介面
+st.title("🍊 Hazel's 黃金體態戰情室")
 
-df_lemon, df_workout = load_data()
+df_lemon = load_data()
 
 if df_lemon is not None:
     st.success("✅ 資料讀取成功！")
     
-    # 📊 數據預覽 - 顯示最近 7 筆，並把最新的放最上面
+    # 📊 數據預覽：先丟掉空白行，抓最後 7 筆，最新在前
     st.subheader("📊 最近 7 天數據預覽")
-    
-    # 先過濾掉完全空白的列，再抓最後 7 筆並反轉順序
     df_clean = df_lemon.dropna(how='all').tail(7).iloc[::-1]
-    
-    # 這裡只顯示 df_clean，確保不會再出現 NameError
     st.dataframe(df_clean, use_container_width=True)
-    
-    # 📈 圖表區
+
+    # 📈 簡易體重趨勢圖
     try:
-        # 確保第一欄（通常是時間戳記）被正確辨識為日期
-        date_col = df_lemon.columns[0] 
-        df_lemon[date_col] = pd.to_datetime(df_lemon[date_col], errors='coerce')
+        # 假設第一欄是日期，第四欄是體重 (請根據你的 Sheet 欄位順序調整索引)
+        df_lemon['Date'] = pd.to_datetime(df_lemon.iloc[:, 0], errors='coerce')
+        df_plot = df_lemon.dropna(subset=['Date'])
         
-        # 排除掉日期轉換失敗的空白列
-        df_plot = df_lemon.dropna(subset=[date_col])
-        
-        st.subheader("📈 體重趨勢圖")
-        # 這裡假設第
+        st.subheader("📈 體重趨勢")
+        # 抓取「體重」那一欄的名字自動畫圖
+        weight_col = df_lemon.columns[4] 
+        st.line_chart(df_plot, x='Date', y=weight_col)
+    except:
+        st.warning("提醒：圖表目前無法自動辨識欄位，但數據表格已正常顯示。")
+
+else:
+    st.error("❌ 無法連線到資料表，請檢查 Google Sheet 是否開啟「知道連結的人皆可檢視」。")
+
+# 結尾：確保沒有遺漏任何程式碼塊
