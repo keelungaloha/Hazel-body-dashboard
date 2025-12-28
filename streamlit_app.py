@@ -21,7 +21,7 @@ DIAMOND_SHEET_ID = "1Iok7RIO1y4ggbcpVja0yoO0J2Cox04Y3WJjufBpOAus"
 def load_data():
     # 注意：這裡的 sheet=Daily%20Data%20🍒 代表分頁名稱是 "Daily Data 🍒"
     # 如果你的分頁名稱不同，請務必修改 sheet= 後面的名字
-    url_lemon = f"https://docs.google.com/spreadsheets/d/{LEMON_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=🍋檸檬列表體重歷程完整記錄”
+    url_lemon = f"https://docs.google.com/spreadsheets/d/{LEMON_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=allDatas”
     
     # 如果第二個表不需要指定分頁，就不用加 sheet=...
     url_diamond = f"https://docs.google.com/spreadsheets/d/{DIAMOND_SHEET_ID}/gviz/tq?tqx=out:csv"
