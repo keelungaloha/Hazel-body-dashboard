@@ -4,18 +4,18 @@ import pandas as pd
 # 1. 核心設定
 st.set_page_config(page_title="Hazel's 黃金體態", page_icon="🍊", layout="wide")
 
-# 🎨 注入自定義 CSS (美編控專屬)
+# 🎨 注入自定義 CSS (修正參數為 unsafe_allow_html)
 st.markdown("""
     <style>
-    /* 全域字體優化 */
+    /* 全域字體優化：優先使用微軟正黑體 */
     html, body, [class*="css"] {
         font-family: "Microsoft JhengHei", "PingFang TC", "Source Sans Pro", sans-serif;
     }
-    /* 標題顏色 */
+    /* 標題顏色改成溫暖橘 */
     h1 {
         color: #FF8C00;
     }
-    /* 指標卡片外框美化 (選用) */
+    /* 指標卡片美化：增加淡橘色背景與左邊框 */
     [data-testid="stMetric"] {
         background-color: #FFF5EE;
         padding: 15px;
@@ -23,7 +23,7 @@ st.markdown("""
         border-left: 5px solid #FF8C00;
     }
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True)
 
 # 2. 資料讀取
 @st.cache_data(ttl=600)
@@ -38,7 +38,7 @@ def load_data():
         return None
 
 # 3. 主程式介面
-st.title("🍊 Hazel's 黃金體態🍊")
+st.title("🍊 Hazel's 黃金體態戰情室")
 
 df_lemon = load_data()
 
@@ -51,11 +51,11 @@ if df_lemon is not None:
         latest = df_lemon.iloc[-1]
         previous = df_lemon.iloc[-2]
         
-        curr_w = round(float(latest.iloc[4]), 1) # 體重
+        curr_w = round(float(latest.iloc[4]), 1) # 體重 (E欄)
         prev_w = round(float(previous.iloc[4]), 1)
         w_delta = round(curr_w - prev_w, 1)
 
-        curr_f = round(float(latest.iloc[5]), 1) # 體脂
+        curr_f = round(float(latest.iloc[5]), 1) # 體脂 (F欄)
         prev_f = round(float(previous.iloc[5]), 1)
         f_delta = round(curr_f - prev_f, 1)
 
@@ -66,11 +66,11 @@ if df_lemon is not None:
         with col3:
             st.metric(label="最後記錄日期", value=str(latest.iloc[0]).split()[0])
     except:
-        st.info("指標計算中...")
+        st.info("指標計算中，請填寫體重與體脂數據...")
 
     st.markdown("---")
 
-    # --- 圖表區 (橘色系優化) ---
+    # --- 圖表區 (橘色系) ---
     try:
         df_lemon['Date'] = pd.to_datetime(df_lemon.iloc[:, 0], errors='coerce')
         df_plot = df_lemon.dropna(subset=['Date'])
@@ -78,9 +78,8 @@ if df_lemon is not None:
         st.subheader("📈 體重趨勢 (橘色波段)")
         weight_col = df_lemon.columns[4] 
         
-        # 使用 area_chart 並指定顏色
-        # 注意：color 參數在較新版的 Streamlit 中可用
-        st.area_chart(df_plot, x='Date', y=weight_col, color="#FFCC99") # 淡淡的橘色
+        # 顏色設定為橘色
+        st.area_chart(df_plot, x='Date', y=weight_col, color="#FFCC99") 
     except:
         st.warning("圖表暫時無法顯示。")
 
@@ -90,4 +89,4 @@ if df_lemon is not None:
         st.dataframe(df_clean, use_container_width=True)
 
 else:
-    st.error("❌ 無法讀取資料。")
+    st.error("❌ 無法讀取資料，請檢查 Google Sheet 權限。")
