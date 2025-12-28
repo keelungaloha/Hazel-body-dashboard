@@ -5,14 +5,15 @@ import plotly.graph_objects as go
 # 1. 核心設定
 st.set_page_config(page_title="Hazel's War Room", page_icon="🍊", layout="wide")
 
-# 🎨 注入 CSS：強化字體與精準感
+# 🎨 注入 CSS：確保 Cinzel 與 Mate SC 呈現，修正露餡問題
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Mate+SC&display=swap" rel="stylesheet">
     <style>
     html, body, [class*="css"] { font-family: 'Georgia', 'Microsoft JhengHei', serif !important; }
-    h1 { font-family: 'Cinzel', serif !important; color: #FF8C00 !important; font-size: 3rem !important; text-align: center; letter-spacing: 4px; }
+    h1 { font-family: 'Cinzel', serif !important; color: #FF8C00 !important; font-size: 3rem !important; text-align: center; letter-spacing: 4px; margin: 10px 0; }
     .period-mini-box { background-color: #FFF5EE; padding: 15px 20px; border-radius: 12px; border-left: 8px solid #FF69B4; margin-bottom: 25px; }
     [data-testid="stMetricValue"] { font-size: 2.5rem !important; font-weight: 800 !important; }
+    .stProgress > div > div > div > div { background: #D4AF37 !important; }
     .mate-title { font-family: 'Mate SC', serif !important; color: #B8860B; font-size: 1.2rem; }
     </style>
     """, unsafe_allow_html=True)
@@ -29,11 +30,13 @@ def load_data():
         return df
     except: return None
 
-# 3. 生理期飲食戰術 (直接根據表格中的 Cycle Day)
+# 3. 生理期飲食戰術
 def get_period_strategy(cycle_day):
+    # 移除字串中的 D (例如將 D16 轉為 16)
     try:
-        cd = int(cycle_day)
-    except: return "數據讀取中", "請確認表格中 Cycle Day 欄位是否有值。"
+        cd_str = str(cycle_day).replace('D', '').strip()
+        cd = int(float(cd_str))
+    except: return "數據解析中", "請檢查表格中的 Cycle Day 格式是否正確（例如 D16 或 16）。"
     
     if 1 <= cd <= 5:
         return f"🌸 月經期 (Day {cd})", "恢復為主。建議維持基礎碳水，避免極端低碳，注意保暖。"
@@ -63,15 +66,19 @@ if df is not None:
     latest = df.iloc[-1]
     prev = df.iloc[-2]
     
-    # 生理期提醒 (從表格第 15 欄抓取 Cycle Day)
-    # 根據 allDatas 結構，Cycle Day 通常在最後幾個欄位，請確認索引
-    # 假設是第 15 欄 (index 14)，如果位置不同請調整索引值
-    cycle_day_val = latest.iloc[14] 
-    p_title, p_advice = get_period_strategy(cycle_day_val)
+    # 【關鍵修正】動態尋找包含 "Cycle Day" 字眼的欄位
+    cycle_col = [c for c in df.columns if 'Cycle Day' in c or 'Cycle' in c]
+    if cycle_col:
+        cycle_day_val = latest[cycle_col[0]]
+        p_title, p_advice = get_period_strategy(cycle_day_val)
+    else:
+        p_title, p_advice = "找不到週期欄位", "請檢查 Sheet 標題是否包含 'Cycle Day' 字樣。"
+
     st.markdown(f'<div class="period-mini-box"><strong>{p_title} 指南：</strong><br>{p_advice}</div>', unsafe_allow_html=True)
 
-    # 數據卡片
+    # 數據卡片 (使用欄位名稱或索引確保正確)
     c1, c2, c3, c4 = st.columns(4)
+    # 假設：索引 4=體重, 5=體脂%, 6=肌肉, 13=ECW
     with c1: st.metric("WEIGHT", f"{latest.iloc[4]}kg", f"{round(latest.iloc[4]-prev.iloc[4],2)}kg", delta_color="inverse")
     with c2: st.metric("FAT %", f"{latest.iloc[5]}%", f"{round(latest.iloc[5]-prev.iloc[5],2)}%", delta_color="inverse")
     with c3: st.metric("MUSCLE", f"{latest.iloc[6]}kg", f"{round(latest.iloc[6]-prev.iloc[6],2)}kg")
@@ -81,8 +88,7 @@ if df is not None:
     st.markdown("---")
     df_plot = df.tail(7) if days_opt=="最近 7 天" else (df.tail(30) if days_opt=="最近 30 天" else df)
     
-    all_cols = df.columns.tolist()
-    selected = st.multiselect("追蹤指標", all_cols, default=[all_cols[4], all_cols[5], all_cols[13]])
+    selected = st.multiselect("追蹤指標", df.columns.tolist(), default=[df.columns[4], df.columns[5], df.columns[13]])
     
     if selected:
         fig = go.Figure()
@@ -99,4 +105,4 @@ if df is not None:
         st.plotly_chart(fig, use_container_width=True)
 
 else:
-    st.error("無法載入數據，請檢查 Google Sheet 權限。")
+    st.error("無法載入數據。")
