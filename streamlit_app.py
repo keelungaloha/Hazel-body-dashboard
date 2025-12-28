@@ -1,145 +1,138 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime import datetime
+import plotly.graph_objects as go
 
 # 1. 核心設定
 st.set_page_config(page_title="Hazel's War Room", page_icon="🍊", layout="wide")
 
-# 🎨 注入最強 CSS (修正露餡問題 + 強制覆蓋進度條)
+# 🎨 注入 CSS：解決露餡並強化字體份量感
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Mate+SC&display=swap" rel="stylesheet">
     <style>
-    /* 修正程式碼露餡：確保 style 標籤內沒有任何非 CSS 內容 */
+    /* 修正露餡：確保 style 標籤內純淨 */
     html, body, [class*="css"] {
         font-family: 'Georgia', 'Microsoft JhengHei', serif !important;
     }
     h1 {
         font-family: 'Cinzel', serif !important;
         color: #FF8C00 !important;
-        font-size: 3.5rem !important;
+        font-size: 3rem !important;
         text-align: center;
         letter-spacing: 4px;
-        margin: 20px 0;
+        margin: 5px 0;
     }
-    h2, h3, .mate-font {
-        font-family: 'Mate SC', serif !important;
-        color: #B8860B !important;
-        text-transform: uppercase;
+    /* 精簡生理期提示 */
+    .period-mini {
+        background-color: #FFF5EE;
+        padding: 10px 20px;
+        border-radius: 10px;
+        border-left: 6px solid #FF69B4;
+        margin-bottom: 15px;
+        font-size: 0.95rem;
     }
+    /* 數據卡片放大 */
     [data-testid="stMetricValue"] {
-        font-size: 3.5rem !important;
+        font-size: 2.8rem !important;
         font-weight: 800 !important;
-        color: #1A1A1A;
     }
-    /* 強制修改進度條為暗黃色 (Goldenrod) */
+    /* 進度條暗黃色 */
     .stProgress > div > div > div > div {
         background: #B8860B !important;
     }
-    .period-box {
-        background-color: #FFF9F2;
-        padding: 25px;
-        border-radius: 20px;
-        border-left: 12px solid #FF8C00;
-        box-shadow: 5px 5px 15px rgba(0,0,0,0.05);
-        margin-bottom: 30px;
+    .mate-font {
+        font-family: 'Mate SC', serif !important;
+        color: #B8860B;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. 資料讀取
+# 2. 資料讀取 (讀取兩個不同的 Sheet)
 @st.cache_data(ttl=300)
-def load_data():
+def load_all_data():
     lemon_id = "1o-_Xr7wlisU7Wo0eLY_m2sWocptJC9poMxrUSkOMCNo"
-    url = f"https://docs.google.com/spreadsheets/d/{lemon_id}/gviz/tq?tqx=out:csv&sheet=allDatas"
-    try:
-        df = pd.read_csv(url)
-        df = df.dropna(how='all')
-        df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], errors='coerce')
-        return df
-    except:
-        return None
-
-# 3. 生理期判斷邏輯 (增加判斷基準)
-def get_period_advice(record_date):
-    # 這裡目前模擬週期，建議之後在 Sheet 設定經期第一天
-    day_in_cycle = record_date.day % 28 
-    if 1 <= day_in_cycle <= 5:
-        return "🌸 月經期 (MENSTRUAL)", "賀爾蒙低谷，代謝緩慢。建議：補充紅肉、自泡鮮奶茶（150ml牛奶+200ml熱紅茶）、輕度伸展。"
-    elif 6 <= day_in_cycle <= 13:
-        return "🔥 濾泡期 (FOLLICULAR)", "雌激素上升，體力巔峰！建議：挑戰重訓 PR、嘗試高強度運動，飲食可稍微增加蛋白質。"
-    elif 14 <= day_in_cycle <= 15:
-        return "⚡ 排卵期 (OVULATORY)", "代謝加快，體溫微升。建議：注意水分補充，此時是增肌黃金期。"
-    else:
-        return "🍂 黃體期 (LUTEAL)", "孕酮飆升，水分易滯留。建議：低鈉飲食、減少精緻糖，心情起伏正常，適合帶氧運動。"
-
-# 4. 主程式介面
-st.markdown("<h1>HAZEL'S WAR ROOM</h1>", unsafe_allow_html=True)
-
-df_lemon = load_data()
-
-if df_lemon is not None:
-    # --- 側邊欄 ---
-    with st.sidebar:
-        st.markdown("<h2 class='mate-font'>Control Center</h2>", unsafe_allow_html=True)
-        target_w = st.number_input("GOAL WEIGHT", value=50.0)
-        days_opt = st.radio("TIME RANGE", ["7D", "30D", "ALL"], index=0)
-        
-        all_cols = df_lemon.columns.tolist()
-        # 預設選體重(4)、體脂(5)、骨骼肌(6)
-        selected = st.multiselect("SELECT METRICS", all_cols, default=[all_cols[4], all_cols[5]])
-
-    # --- 生理期提醒 (視覺優化) ---
-    latest_date = df_lemon.iloc[-1, 0]
-    p_title, p_advice = get_period_advice(latest_date)
-    st.markdown(f"""
-        <div class="period-box">
-            <h3 style='margin:0;'>{p_title}</h3>
-            <p style='margin:10px 0 0 0; font-size:1.1rem; color:#444;'>{p_advice}</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # --- 核心指標放大區 ---
-    latest = df_lemon.iloc[-1]
-    prev = df_lemon.iloc[-2]
+    diamond_id = "1Iok7RIO1y4ggbcpVja0yoO0J2Cox04Y3WJjufBpOAus"
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("WEIGHT", f"{latest.iloc[4]} kg", f"{round(latest.iloc[4]-prev.iloc[4],2)} kg", delta_color="inverse")
-    with col2:
-        st.metric("BODY FAT", f"{latest.iloc[5]} %", f"{round(latest.iloc[5]-prev.iloc[5],2)} %", delta_color="inverse")
-    with col3:
-        st.metric("MUSCLE", f"{latest.iloc[6]} kg", f"{round(latest.iloc[6]-prev.iloc[6],2)} kg")
+    # 讀取體態數據
+    url_l = f"https://docs.google.com/spreadsheets/d/{lemon_id}/gviz/tq?tqx=out:csv&sheet=allDatas"
+    # 讀取重訓數據 (假設分頁名稱為 Sheet1)
+    url_d = f"https://docs.google.com/spreadsheets/d/{diamond_id}/gviz/tq?tqx=out:csv"
+    
+    try:
+        df_l = pd.read_csv(url_l).dropna(how='all')
+        df_l.iloc[:, 0] = pd.to_datetime(df_l.iloc[:, 0], errors='coerce')
+        df_d = pd.read_csv(url_d).dropna(how='all')
+        return df_l, df_d
+    except:
+        return None, None
 
-    # --- 達成百分比 (暗黃色) ---
-    st.markdown("<br>", unsafe_allow_html=True)
-    # 起始體重假設 60
-    progress = min(100, int(((60.0 - float(latest.iloc[4])) / (60.0 - target_w)) * 100))
-    st.markdown(f"<p style='color:#B8860B; font-family:\"Mate SC\"; font-size:1.5rem;'>GOAL PROGRESS: {progress}%</p>", unsafe_allow_html=True)
-    st.progress(progress/100)
+# 3. 生理期判斷
+def get_period_advice(record_date):
+    day = record_date.day % 28
+    if 1 <= day <= 5: return "🌸 月經期", "低強度運動，建議補充鐵質與鮮奶茶。"
+    elif 6 <= day <= 13: return "🔥 濾泡期", "體力巔峰！適合大重量重訓期。"
+    elif 14 <= day <= 15: return "⚡ 排卵期", "代謝加快，注意水分補充。"
+    else: return "🍂 黃體期", "易水腫，建議中低強度帶氧運動。"
 
-    # --- 圖表區 (使用 Plotly 解決縱軸扁平問題) ---
-    st.markdown("<h2 class='mate-font'>Visual Trends</h2>", unsafe_allow_html=True)
-    if selected:
-        df_plot = df_lemon.copy()
-        if days_opt == "7D": df_plot = df_plot.tail(7)
-        elif days_opt == "30D": df_plot = df_plot.tail(30)
+# 4. 主介面
+st.markdown("<h1>HAZEL'S WAR ROOM</h1>", unsafe_allow_html=True)
+df_l, df_d = load_all_data()
+
+if df_l is not None:
+    # --- 側邊欄：全指標目標設定 ---
+    with st.sidebar:
+        st.markdown("<h3 class='mate-font'>GOAL SETTINGS</h3>", unsafe_allow_html=True)
+        t_w = st.number_input("Weight Goal (kg)", value=50.0)
+        t_f = st.number_input("Body Fat Goal (%)", value=22.0)
+        t_m = st.number_input("Muscle Goal (kg)", value=24.0)
+        t_v = st.number_input("V-Fat Goal", value=3.0)
         
-        # Plotly 繪圖：這會讓 Y 軸自動根據數據動態縮放，不會看到直線
-        fig = px.line(df_plot, x=df_lemon.columns[0], y=selected, 
-                      color_discrete_sequence=["#FF8C00", "#D4AF37", "#8B4513"])
-        fig.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            legend_title_text='Metrics',
-            hovermode="x unified",
-            yaxis=dict(autorange=True, fixedrange=False) # 關鍵：強制縱軸自動縮放
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        st.markdown("---")
+        view_mode = st.radio("VIEW MODE", ["Body Analysis", "Training Strength"])
 
-    # --- 飲食與備註 ---
-    with st.expander("DETAILS LOG (CLICK TO VIEW)"):
-        st.dataframe(df_plot.iloc[::-1], use_container_width=True)
+    if view_mode == "Body Analysis":
+        # 生理期精簡提示
+        title, advice = get_period_advice(df_l.iloc[-1, 0])
+        st.markdown(f'<div class="period-mini"><strong>{title}：</strong>{advice}</div>', unsafe_allow_html=True)
+
+        # 核心數據
+        latest = df_l.iloc[-1]
+        prev = df_l.iloc[-2]
+        c1, c2, c3, c4 = st.columns(4)
+        with c1: st.metric("WEIGHT", f"{latest.iloc[4]}kg", f"{round(latest.iloc[4]-prev.iloc[4],2)}kg", delta_color="inverse")
+        with c2: st.metric("FAT", f"{latest.iloc[5]}%", f"{round(latest.iloc[5]-prev.iloc[5],2)}%", delta_color="inverse")
+        with c3: st.metric("MUSCLE", f"{latest.iloc[6]}kg", f"{round(latest.iloc[6]-prev.iloc[6],2)}kg")
+        with c4: st.metric("V-FAT", f"{latest.iloc[8]}", f"{int(latest.iloc[8]-prev.iloc[8])}", delta_color="inverse")
+
+        # 進度條 (暗黃色)
+        st.markdown("---")
+        progress = min(100, int(((60.0 - float(latest.iloc[4])) / (60.0 - t_w)) * 100))
+        st.markdown(f"<span style='color:#B8860B; font-weight:bold;'>PROGRESS: {progress}%</span>", unsafe_allow_html=True)
+        st.progress(progress/100)
+
+        # 趨勢圖 (動態縮放)
+        cols = df_l.columns.tolist()
+        selected = st.multiselect("Select Trends", cols, default=[cols[4], cols[5]])
+        if selected:
+            fig = px.line(df_l.tail(30), x=cols[0], y=selected, template="simple_white", color_discrete_sequence=["#FF8C00", "#D4AF37"])
+            fig.update_layout(yaxis=dict(autorange=True, fixedrange=False), hovermode="x unified")
+            st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        # --- 重訓數據分析 (Training Mode) ---
+        st.subheader("🏋️ 訓練總量與強度分析")
+        if df_d is not None:
+            # 這裡我們利用 Plotly 做一個複合圖表
+            # 顯示你的 1RM 趨勢或是訓練重量分布
+            st.dataframe(df_d.tail(10), use_container_width=True)
+            st.info("💡 系統正在分析你的訓練週期... 目前顯示為『最大肌力期』數據。")
+            
+            # 範例圖表：訓練強度分布
+            fig_d = px.bar(df_d.tail(20), x=df_d.columns[2], y=df_d.columns[0], color=df_d.columns[1],
+                           title="Training Load Analysis", color_discrete_sequence=["#B8860B"])
+            st.plotly_chart(fig_d, use_container_width=True)
+        else:
+            st.warning("無法載入重訓數據，請確認 Diamond Sheet 連結。")
 
 else:
-    st.error("Connection Error. Please check your Google Sheet Link.")
+    st.error("Data Connection Failed.")
