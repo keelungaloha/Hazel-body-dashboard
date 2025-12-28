@@ -48,8 +48,10 @@ if df_lemon is not None:
   # 📊 數據預覽 - 改為顯示最近 7 筆，並把最新的放最上面
     st.subheader("📊 最近 7 天數據預覽")
     
-    # tail(7) 抓最後 7 筆，iloc[::-1] 把順序反轉（最新在前）
-    latest_7_days = df_lemon.tail(7).iloc[::-1]
+   # 先把完全空白的列丟掉 (dropna)，再抓最後 7 筆
+    df_clean = df_lemon.dropna(how='all').tail(7).iloc[::-1]
+    
+    st.dataframe(df_clean, use_container_width=True)
     
     st.dataframe(latest_7_days, use_container_width=True)
     # 嘗試畫一個簡單的體重折線圖 (假設你有 'Date' 和 '體重' 欄位)
