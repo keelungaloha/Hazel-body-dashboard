@@ -18,7 +18,7 @@ def load_data():
         return None
 
 # 3. 主程式介面
-st.title("🍊 Hazel's 黃金體態戰情室")
+st.title("🍊 Hazel's 黃金體態🍊")
 
 df_lemon = load_data()
 
